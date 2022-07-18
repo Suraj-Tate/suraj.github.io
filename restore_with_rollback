@@ -1,0 +1,23 @@
+Restore with rollback
+ALTER DATABASE AdventureWorks SET SINGLE_USER WITH 
+
+ROLLBACK IMMEDIATE
+
+GO
+
+
+
+-- Restore Script
+
+RESTORE DATABASE AdventureWorks FROM DISK = 'D:\AdventureWorks.BAK' 
+
+with replace, recovery
+
+GO
+
+
+
+ALTER DATABASE AdventureWorks  SET MULTI_USER
+
+GO
+
