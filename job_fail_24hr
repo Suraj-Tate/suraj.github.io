@@ -1,0 +1,42 @@
+Select 
+
+	sj.name, sjh.message, sjh.run_date, sjh.run_time From 
+
+	msdb..sysjobhistory sjh
+
+	Inner Join 
+
+		msdb..sysjobs sj 
+
+	On 
+
+		sjh.job_id = sj.job_id
+
+	Inner Join 
+
+		(	
+
+			Select 
+
+				job_id, max(instance_id) maxinstanceid 
+
+			From 
+
+				msdb..sysjobhistory 
+
+			Where
+
+				run_status = 0 
+
+				And Datediff(hh, Convert(Datetime, RTrim(run_date)), Getdate()) < 24
+
+			Group By 
+
+				job_id
+
+		) a 
+
+	On 
+
+		sjh.job_id = a.job_id And sjh.instance_id = a.maxinstanceid
+
