@@ -1,0 +1,141 @@
+SELECT DISTINCT 
+
+		getdate() as Date, @@servername as ServerName, volume_mount_point as [Disk_Mount_Point], 
+
+		file_system_type [File System Type], 
+
+		logical_volume_name as [Logical Drive Name], 
+
+		CONVERT(DECIMAL(18,2),total_bytes/1073741824.0) AS [Total Size in GB], ---1GB = 1073741824 bytes
+
+		CONVERT(DECIMAL(18,2),available_bytes/1073741824.0) AS [Available Size in GB],  
+
+		CAST(CAST(available_bytes AS FLOAT)/ CAST(total_bytes AS FLOAT) AS DECIMAL(18,2)) * 100 AS [Space Free %] 
+
+FROM sys.master_files 
+
+CROSS APPLY sys.dm_os_volume_stats(database_id, file_id)
+
+--Disk space
+
+DECLARE @hr int
+
+DECLARE @fso int
+
+DECLARE @drive char(1)
+
+DECLARE @odrive int
+
+DECLARE @TotalSize varchar(20)
+
+DECLARE @MB bigint ; SET @MB = 1048576
+
+ 
+
+CREATE TABLE #drives (drive char(1) PRIMARY KEY,
+
+FreeSpace int NULL,
+
+TotalSize int NULL)
+
+ 
+
+INSERT #drives(drive,FreeSpace)
+
+EXEC master.dbo.xp_fixeddrives
+
+ 
+
+EXEC @hr=sp_OACreate 'Scripting.FileSystemObject',@fso OUT
+
+IF @hr <> 0 EXEC sp_OAGetErrorInfo @fso
+
+ 
+
+DECLARE dcur CURSOR LOCAL FAST_FORWARD
+
+FOR SELECT drive from #drives
+
+ORDER by drive
+
+ 
+
+OPEN dcur
+
+ 
+
+FETCH NEXT FROM dcur INTO @drive
+
+ 
+
+WHILE @@FETCH_STATUS=0
+
+BEGIN
+
+ 
+
+EXEC @hr = sp_OAMethod @fso,'GetDrive', @odrive OUT, @drive
+
+IF @hr <> 0 EXEC sp_OAGetErrorInfo @fso
+
+ 
+
+EXEC @hr = sp_OAGetProperty @odrive,'TotalSize', @TotalSize OUT
+
+IF @hr <> 0 EXEC sp_OAGetErrorInfo @odrive
+
+ 
+
+UPDATE #drives
+
+SET TotalSize=@TotalSize/@MB
+
+WHERE drive=@drive
+
+ 
+
+FETCH NEXT FROM dcur INTO @drive
+
+ 
+
+END
+
+ 
+
+CLOSE dcur
+
+DEALLOCATE dcur
+
+ 
+
+EXEC @hr=sp_OADestroy @fso
+
+IF @hr <> 0 EXEC sp_OAGetErrorInfo @fso
+
+ 
+
+SELECT drive,
+
+FreeSpace as 'Free(MB)',
+
+TotalSize as 'Total(MB)',
+
+CAST((FreeSpace/(TotalSize*1.0))*100.0 as int) as 'Free(%)'
+
+FROM #drives
+
+ORDER BY drive
+
+ 
+
+DROP TABLE #drives
+
+
+Last 24 hours backup not done. (FULL, Diff and TLOG)
+SELECT DB.name AS Database_Name
+
+,MAX(DB.recovery_model_desc) AS Recovery_Model
+
+,MAX(BS.backup_start_date) AS Last_Backup
+
+,MAX(CASE WHEN
