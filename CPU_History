@@ -1,0 +1,196 @@
+SQL Server instance CPU usage from last 10 minutes
+--SQL Server instance CPU usage from last 10 minutes
+
+DECLARE @ts BIGINT
+
+SELECT @ts =(SELECT cpu_ticks/(cpu_ticks/ms_ticks)
+
+FROM sys.dm_os_sys_info);
+
+SELECT TOP(10)SQLProcessUtilization AS [SQLServer_Process_CPU_Utilization],
+
+SystemIdle AS [System_Idle_Process],
+
+100 - SystemIdle - SQLProcessUtilization AS [Other_Process_CPU_Utilization],
+
+DATEADD(ms,-1 *(@ts - [timestamp]),GETDATE())AS [Event_Time]
+
+FROM (SELECT record.value('(./Record/@id)[1]','int')AS record_id,
+
+record.value('(./Record/SchedulerMonitorEvent/SystemHealth/SystemIdle)[1]','int')AS [SystemIdle],
+
+record.value('(./Record/SchedulerMonitorEvent/SystemHealth/ProcessUtilization)[1]','int')AS [SQLProcessUtilization],
+
+[timestamp]
+
+     FROM (SELECT[timestamp],
+
+convert(xml, record) AS [record]
+
+            FROM sys.dm_os_ring_buffers
+
+            WHERE ring_buffer_type =N'RING_BUFFER_SCHEDULER_MONITOR'
+
+AND record LIKE'%%')AS x
+
+)AS y
+
+ORDER BY record_id DESC;
+
+ 
+
+ 
+
+Script executed in particular time:
+SELECT DB_Name(qp.dbid) as dbname , qp.dbid , qp.objectid , qp.number
+
+       , qt.text
+
+       , SUBSTRING(qt.text, (qs.statement_start_offset/2) + 1,
+
+             ((CASE statement_end_offset
+
+                    WHEN -1 THEN DATALENGTH(qt.text)
+
+                    ELSE qs.statement_end_offset END
+
+                           - qs.statement_start_offset)/2) + 1) as statement_text
+
+       , qs.creation_time , qs.last_execution_time , qs.execution_count
+
+       , qs.total_worker_time    / qs.execution_count as avg_worker_time
+
+FROM sys.dm_exec_query_stats as qs
+
+       CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) as qp
+
+       CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) as qt
+
+WHERE last_execution_time >= '2016-05-02 13:40:03.270'
+
+AND last_execution_time <'2016-05-02 13:52:03.617'
+
+ 
+
+ 
+
+CPU by database
+ 
+
+--CPU by Database
+
+WITH DB_CPU_Stats
+
+AS
+
+(SELECT DatabaseID,
+
+DB_Name(DatabaseID)AS [DatabaseName],
+
+SUM(total_worker_time)AS [CPU_Time(Ms)]
+
+FROM sys.dm_exec_query_stats AS qs
+
+CROSS APPLY(SELECT CONVERT(int, value)AS [DatabaseID]
+
+ FROM sys.dm_exec_plan_attributes(qs.plan_handle)
+
+ WHERE attribute =N'dbid')AS epa
+
+GROUP BY DatabaseID)
+
+SELECT ROW_NUMBER()OVER(ORDER BY [CPU_Time(Ms)] DESC)AS [row_num],
+
+DatabaseName,
+
+[CPU_Time(Ms)],
+
+CAST([CPU_Time(Ms)] * 1.0 /SUM([CPU_Time(Ms)])
+
+OVER()* 100.0 AS DECIMAL(5, 2))AS [CPUPercent]
+
+FROM DB_CPU_Stats
+
+WHERE DatabaseID > 4 -- system databases
+
+AND DatabaseID <> 32767 -- ResourceDB
+
+ORDER BY row_num
+
+OPTION(RECOMPILE);
+
+ 
+
+Find top N queries in particular database for CPU utilization
+USE Database_NAME;
+
+GO
+
+SELECT TOP 5 query_stats.query_hash AS "Query Hash",
+
+    SUM(query_stats.total_worker_time) / SUM(query_stats.execution_count) AS "Avg CPU Time",
+
+    MIN(query_stats.statement_text) AS "Statement Text"
+
+FROM
+
+    (SELECT QS.*,
+
+    SUBSTRING(ST.text, (QS.statement_start_offset/2) + 1,
+
+    ((CASE statement_end_offset
+
+        WHEN -1 THEN DATALENGTH(ST.text)
+
+        ELSE QS.statement_end_offset END
+
+            - QS.statement_start_offset)/2) + 1) AS statement_text
+
+     FROM sys.dm_exec_query_stats AS QS
+
+     CROSS APPLY sys.dm_exec_sql_text(QS.sql_handle) as ST) as query_stats
+
+GROUP BY query_stats.query_hash
+
+ORDER BY 2 DESC;
+
+ 
+
+ 
+
+Top 20 CPU utilization Query with execution plan
+--top 20 CPU utilization Query with execution plan
+
+SELECT TOP (20)
+
+    st.text AS Query,
+
+    qs.execution_count,
+
+    qs.total_worker_time AS Total_CPU,
+
+    total_CPU_inSeconds = --Converted from microseconds
+
+    qs.total_worker_time/1000000,
+
+    average_CPU_inSeconds = --Converted from microseconds
+
+    (qs.total_worker_time/1000000) / qs.execution_count,
+
+    qs.total_elapsed_time,
+
+    total_elapsed_time_inSeconds = --Converted from microseconds
+
+    qs.total_elapsed_time/1000000,
+
+    qp.query_plan
+
+FROM sys.dm_exec_query_stats AS qs
+
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS st
+
+CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+
+ORDER BY qs.total_worker_time DESC OPTION (RECOMPILE);
+
+ 
