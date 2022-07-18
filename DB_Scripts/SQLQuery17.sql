@@ -1,0 +1,3 @@
+dbcc opentran()
+select * from sys.syslogins
+where sid =0x0105000000000005150000004109a5023a181415800345a7e9030000
