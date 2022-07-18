@@ -1,0 +1,113 @@
+
+sys.dm_os_sys_info
+
+Returns computer resources usage information.
+
+sys.dm_os_memory_cache_counters
+
+Returns run-time information about the cache entries allocated, their use and the source of memory for the cache entries.
+
+sys.dm_os_memory_nodes
+
+Returns information about the memory nodes.
+
+sys.dm_os_memory_cache_entries
+
+Returns original and current cost of any cache entry.
+
+sys.dm_os_memory_cache_hash_tables
+
+Returns a row for each active cache in the instance of SQL Server.
+
+sys.dm_os_memory_cache_clock_hands
+
+Returns the status of each hand for a specific cache clock.
+
+sys.dm_os_memory_clerks
+
+Returns detailed information about all memory clerks, which SQL Server is currently consuming.
+
+sys.dm_os_memory_objects
+
+ Returns information about the memory objects currently allocated by the instance of SQL Server.
+
+sys.dm_os_performance_counters
+
+Returns SQL Server-specific performance counter information.
+
+sys.dm_os_ring_buffers
+
+Returns detailed information about system health. The information returned is useful to troubleshoot memory pressure. This view is not currently supported by SQL Server 2014.
+
+
+
+
+
+--Current Instance Level
+
+ 
+
+--Instance Level
+
+select * from sys.dm_os_process_memory
+
+ 
+
+ 
+
+Or
+
+ 
+
+--Memory used by SQL Server
+
+select
+
+(physical_memory_in_use_kb/1024)Memory_usedby_Sqlserver_MB,
+
+(locked_page_allocations_kb/1024 )Locked_pages_used_Sqlserver_MB,
+
+(total_virtual_address_space_kb/1024 )Total_VAS_in_MB,
+
+process_physical_memory_low,
+
+process_virtual_memory_low
+
+from sys.dm_os_process_memory
+
+ 
+
+ 
+
+ 
+
+ 
+
+-- Total OS Memory and used percentage
+
+--Script: Captures System Memory Usage
+
+--Works On: 2008, 2008 R2, 2012, 2014, 2016
+
+ 
+
+select
+
+      total_physical_memory_kb/1024 AS Total_physical_memory_mb,
+
+      available_physical_memory_kb/1024 AS available_physical_memory_mb,
+
+      total_page_file_kb/1024 AS total_page_file_mb,
+
+      available_page_file_kb/1024 AS available_page_file_mb,
+
+      100 - (100 * CAST(available_physical_memory_kb AS DECIMAL(18,3))/CAST(total_physical_memory_kb AS DECIMAL(18,3)))
+
+      AS 'Percentage_Used',
+
+      system_memory_state_desc
+
+from  sys.dm_os_sys_memory;
+
+ 
+
