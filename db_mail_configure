@@ -1,0 +1,55 @@
+sp_configure 'show advanced options', 1;
+
+GO
+
+RECONFIGURE;
+
+GO
+
+sp_configure 'Database Mail XPs', 1;
+
+GO
+
+RECONFIGURE
+
+GO
+
+
+DECLARE @pid INT;
+
+DECLARE @acctid INT;
+
+
+EXEC msdb.dbo.sysmail_add_profile_sp
+
+  @profile_name = 'Default Profile',
+
+  @profile_id = @pid OUTPUT;
+
+
+EXEC msdb.dbo.sysmail_add_account_sp 
+
+  @account_name = 'Default Account',
+
+  @email_address = 'sql.myserver@mycompany.com',
+
+  @display_name = 'SQL - myserver',
+
+  @replyto_address = 'DBAs@mycompany.com',
+
+  @mailserver_name = 'smtp.mycompany.com',
+
+  @account_id = @acctid OUTPUT;
+
+
+EXEC msdb.dbo.sysmail_add_profileaccount_sp
+
+  @profile_id = @pid,
+
+  @account_id = @acctid, 
+
+  @sequence_number = 1;
+
+GO
+
+
