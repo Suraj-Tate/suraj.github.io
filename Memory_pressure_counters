@@ -1,0 +1,159 @@
+--Clean pages and Dirty pages count
+
+SELECT (CASE
+
+           WHEN ( [database_id] = 32767 ) THEN 'Resource Database'
+
+           ELSE Db_name (database_id)
+
+         END )  AS 'Database Name',
+
+       Sum(CASE
+
+             WHEN ( [is_modified] = 1 ) THEN 0
+
+             ELSE 1
+
+           END) AS 'Clean Page Count',
+
+             Sum(CASE
+
+             WHEN ( [is_modified] = 1 ) THEN 1
+
+             ELSE 0
+
+           END) AS 'Dirty Page Count'
+
+FROM   sys.dm_os_buffer_descriptors
+
+GROUP  BY database_id
+
+ORDER  BY DB_NAME(database_id);
+
+ 
+
+Memory Counters
+
+                                                    i.     **Page Life Expectancy
+
+                                                  ii.     **Buffer Cache Hit ratio:  should be 100%
+
+                                                iii.     **Free pages/ Sec
+
+                                                iv.     **Lazy Writes/sec
+
+                                                  v.     Free list Stall / Sec
+
+                                                vi.     Page Reads / sec
+
+                                              vii.     Page Writes/sec
+
+                                             viii.     Checkpoint Pages / sec
+
+Free List Stalls / sec: 
+
+
+
+
+
+
+
+o   Page life Expectancy:
+
+SELECT object_name, counter_name, cntr_value, cntr_type
+
+FROM sys.dm_os_performance_counters
+
+WHERE [object_name] LIKE '%Buffer Manager%' AND [counter_name] =  'Page life Expectancy'
+
+ 
+
+
+
+o   Buffer Cache Hit ratio: 
+
+
+SELECT object_name, counter_name, cntr_value, cntr_type
+
+FROM sys.dm_os_performance_counters WHERE [object_name] LIKE '%Buffer Manager%' AND [counter_name] = 'Buffer cache hit ratio'
+
+
+
+o   Lazy writes/ sec
+
+SELECT object_name, counter_name, cntr_value, cntr_type
+
+FROM sys.dm_os_performance_counters
+
+WHERE [object_name] LIKE '%Buffer Manager%' AND [counter_name] = 'Lazy writes/sec'
+
+ 
+
+
+ 
+
+ 
+
+DECLARE @LazyWrites1 bigint;
+
+SELECT @LazyWrites1 = cntr_value
+
+  FROM sys.dm_os_performance_counters   WHERE counter_name = 'Lazy writes/sec';
+
+ 
+
+WAITFOR DELAY '00:00:10';
+
+ 
+
+SELECT(cntr_value - @LazyWrites1) / 10 AS 'LazyWrites/sec'
+
+  FROM sys.dm_os_performance_counters   WHERE counter_name = 'Lazy writes/sec';
+
+ 
+
+
+
+
+
+
+o   Free list Stall / Sec
+
+
+SELECT object_name, counter_name, cntr_value, cntr_type
+
+FROM sys.dm_os_performance_counters
+
+WHERE [object_name] LIKE '%Buffer Manager%'
+
+AND [counter_name] =  'Free list stalls/sec'
+
+ 
+
+
+o    Page read/Sec
+
+
+
+
+SELECT object_name, counter_name, cntr_value
+
+FROM sys.dm_os_performance_counters
+
+WHERE [object_name] LIKE '%Buffer Manager%' AND [counter_name] = 'Page reads/sec'
+
+
+
+o   Page writes/sec:
+
+ 
+
+SELECT object_name, counter_name, cntr_value
+
+FROM sys.dm_os_performance_counters
+
+WHERE [object_name] LIKE '%Buffer Manager%'
+
+AND [counter_name] = 'Page writes/sec'
+
+ 
