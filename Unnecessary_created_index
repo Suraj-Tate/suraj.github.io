@@ -1,0 +1,84 @@
+Unnecessary created indexes
+DMV
+
+sys.dm_db_index_operational_stats
+
+sys.dm_db_index_usage_stats
+
+ 
+
+sys.dm_db_index_operational_stats (db_id(),objectid,indexid,partitianid )
+
+ 
+
+leaf_insert_count - total count of leaf level inserts
+leaf_delete_count - total count of leaf level deletes
+leaf_update_count  - total count of leaf level updates
+leaf_ghost_count
+ 
+
+sys.dm_db_index_usage_stats
+
+ 
+
+user_seeks - number of index seeks
+user_scans- number of index scans
+user_lookups - number of index lookups
+user_updates - number of insert, update or delete operations
+ 
+
+
+
+
+
+SELECT OBJECT_NAME(A.[OBJECT_ID]) AS [OBJECT NAME],
+
+       I.[NAME] AS [INDEX NAME],
+
+       A.LEAF_INSERT_COUNT,
+
+       A.LEAF_UPDATE_COUNT,
+
+       A.LEAF_DELETE_COUNT
+
+FROM   SYS.DM_DB_INDEX_OPERATIONAL_STATS (db_id(),NULL,NULL,NULL ) A
+
+       INNER JOIN SYS.INDEXES AS I
+
+         ON I.[OBJECT_ID] = A.[OBJECT_ID]
+
+            AND I.INDEX_ID = A.INDEX_ID
+
+WHERE  OBJECTPROPERTY(A.[OBJECT_ID],'IsUserTable') = 1
+
+ 
+
+ 
+
+select * from sys.dm_db_index_usage_stats
+
+This DMV shows you how many times the index was used for user queries.
+
+ 
+
+
+ 
+
+SELECT OBJECT_NAME(S.[OBJECT_ID]) AS [OBJECT NAME], I.[NAME] AS [INDEX NAME],
+
+       USER_SEEKS,
+
+       USER_SCANS,
+
+       USER_LOOKUPS,
+
+       USER_UPDATES
+
+FROM   SYS.DM_DB_INDEX_USAGE_STATS AS S
+
+       INNER JOIN SYS.INDEXES AS I ON I.[OBJECT_ID] = S.[OBJECT_ID] AND I.INDEX_ID = S.INDEX_ID
+
+WHERE  OBJECTPROPERTY(S.[OBJECT_ID],'IsUserTable') = 1
+
+       AND S.database_id = DB_ID()
+
